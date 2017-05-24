@@ -5,16 +5,8 @@ tpm_func <- function(alpha, omegas, resources, d, nc) {
     .Call('steppingstone_tpm_func', PACKAGE = 'steppingstone', alpha, omegas, resources, d, nc)
 }
 
-walk_func <- function(tpm, n, xy0, nc) {
-    .Call('steppingstone_walk_func', PACKAGE = 'steppingstone', tpm, n, xy0, nc)
-}
-
-walk_func_boundary_stop <- function(tpm, n, xy0, nc) {
-    .Call('steppingstone_walk_func_boundary_stop', PACKAGE = 'steppingstone', tpm, n, xy0, nc)
-}
-
-walk_func_boundary_reflective <- function(tpm, n, xy0, nc, max_try) {
-    .Call('steppingstone_walk_func_boundary_reflective', PACKAGE = 'steppingstone', tpm, n, xy0, nc, max_try)
+walk <- function(tpm, n, xy0, nc, dp, init_dir = -1L, boundary = 1L, max_try = 100L) {
+    .Call('steppingstone_walk', PACKAGE = 'steppingstone', tpm, n, xy0, nc, dp, init_dir, boundary, max_try)
 }
 
 ud_func <- function(tpm, n, xy0, nc, burnin) {

@@ -21,9 +21,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// walk_func
-List walk_func(NumericMatrix tpm, int n, NumericVector xy0, int nc);
-RcppExport SEXP steppingstone_walk_func(SEXP tpmSEXP, SEXP nSEXP, SEXP xy0SEXP, SEXP ncSEXP) {
+// walk
+List walk(NumericMatrix tpm, int n, NumericVector xy0, int nc, NumericVector dp, int init_dir, int boundary, int max_try);
+RcppExport SEXP steppingstone_walk(SEXP tpmSEXP, SEXP nSEXP, SEXP xy0SEXP, SEXP ncSEXP, SEXP dpSEXP, SEXP init_dirSEXP, SEXP boundarySEXP, SEXP max_trySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -31,36 +31,11 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type xy0(xy0SEXP);
     Rcpp::traits::input_parameter< int >::type nc(ncSEXP);
-    rcpp_result_gen = Rcpp::wrap(walk_func(tpm, n, xy0, nc));
-    return rcpp_result_gen;
-END_RCPP
-}
-// walk_func_boundary_stop
-List walk_func_boundary_stop(NumericMatrix tpm, int n, NumericVector xy0, int nc);
-RcppExport SEXP steppingstone_walk_func_boundary_stop(SEXP tpmSEXP, SEXP nSEXP, SEXP xy0SEXP, SEXP ncSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type tpm(tpmSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type xy0(xy0SEXP);
-    Rcpp::traits::input_parameter< int >::type nc(ncSEXP);
-    rcpp_result_gen = Rcpp::wrap(walk_func_boundary_stop(tpm, n, xy0, nc));
-    return rcpp_result_gen;
-END_RCPP
-}
-// walk_func_boundary_reflective
-List walk_func_boundary_reflective(NumericMatrix tpm, int n, NumericVector xy0, int nc, int max_try);
-RcppExport SEXP steppingstone_walk_func_boundary_reflective(SEXP tpmSEXP, SEXP nSEXP, SEXP xy0SEXP, SEXP ncSEXP, SEXP max_trySEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type tpm(tpmSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type xy0(xy0SEXP);
-    Rcpp::traits::input_parameter< int >::type nc(ncSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type dp(dpSEXP);
+    Rcpp::traits::input_parameter< int >::type init_dir(init_dirSEXP);
+    Rcpp::traits::input_parameter< int >::type boundary(boundarySEXP);
     Rcpp::traits::input_parameter< int >::type max_try(max_trySEXP);
-    rcpp_result_gen = Rcpp::wrap(walk_func_boundary_reflective(tpm, n, xy0, nc, max_try));
+    rcpp_result_gen = Rcpp::wrap(walk(tpm, n, xy0, nc, dp, init_dir, boundary, max_try));
     return rcpp_result_gen;
 END_RCPP
 }

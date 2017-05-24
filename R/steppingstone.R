@@ -1,19 +1,13 @@
-#' @export
 #' @useDynLib steppingstone
 
-controll <- function() {
-  list(
-    boundary = "wrap",
-    on_error = "return_xy"
-  )
-}
-
 #' @export
-steppingstone <- function(alpha, omegas, resources, n,
+steppingstone <- function(alpha = pm2alpha(0.5), omegas, resources, n = 1e5,
                           rarify_by = 100,
                           burnin = round(n / 10), xy0 = c(0, 0),
+                          boundary = "wrap",
+                          kappa = 0,
                           with_attr = FALSE, more = NULL, random_error = 0,
-                          ctl = controll()) {
+                          init_dir = -1) {
 
   r <- raster::as.array(resources)
   nc <- dim(r)[2]
@@ -32,26 +26,29 @@ steppingstone <- function(alpha, omegas, resources, n,
     stop("Transition matrices contain NaN. Try to rescale resources.")
   }
 
+  # transition probabilities
+  suppressWarnings(fwd <- stats::integrate(circular::dvonmises, 3 * pi / 4, 5 * pi / 4, pi, kappa)$value)
+  suppressWarnings(side <- stats::integrate(circular::dvonmises, 1 * pi / 4, 3 * pi / 4, pi, kappa)$value)
+  # this identical to the above: left <- stats::integrate(circular::dvonmises, 5 * pi / 4, 7 * pi / 4, pi, k)$value
+  suppressWarnings(m3a <- stats::integrate(circular::dvonmises, 0, 1 * pi / 4, pi, kappa))
+  suppressWarnings(m3b <- stats::integrate(circular::dvonmises, 7 * pi / 4, 8 * pi / 4, pi, kappa))
+  back <- m3a$value + m3b$value
+
+  dir_wei <- c(fwd, side, back)
+
+
+
   # simulate walk
-  if (ctl$boundary == "wrap") {
-    w <- walk_func(tm1, n, xy0, nc)$steps
+  if (boundary == "wrap") {
+    w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 1, init_dir = init_dir)$steps
 
-  } else if (ctl$boundary == "stop") {
-    w <- walk_func_boundary_stop(tm1, n, xy0, nc)
-    if (w$outcome == -1) {
-      if (ctl$on_boundary_error == "return_xy") {
-        w <- w$steps[1:w$last_step]
-        #w <- w$steps
-      } else
-        stop("Encountered boundary")
-    } else {
-      w <- w$steps
-    }
-
-  } else if (ctl$boundary == "reflective") {
-    w <- walk_func_boundary_reflective(tm1, n, xy0, nc, ctl$max_try)$steps
-
+  } else if (boundary == "stop") {
+    w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 2, init_dir = init_dir)
+    w <- w$steps[1:w$last_step]
+  } else if (boundary == "reflective") {
+    w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 3, init_dir = init_dir)$steps
   }
+
 
   # rm burnin
   if (burnin > 0)
@@ -78,6 +75,8 @@ steppingstone <- function(alpha, omegas, resources, n,
          rarify_by = rarify_by,
          burnin = burnin,
          more = more,
+         kappa = kappa,
+         boundary = boundary,
          with_attr = TRUE)
   } else {
     list(xy = xy,

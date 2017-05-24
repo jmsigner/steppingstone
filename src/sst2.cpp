@@ -122,12 +122,12 @@ NumericMatrix tpm_func(double alpha, NumericVector omegas, NumericMatrix resourc
 
   for (i = 0; i < n; i++) {
     /*
-     * get neighbour pixels
+     * get neighbour pixels (north = up)
      * 0 = stay
      * 1 = east
      * 2 = west
      * 3 = north
-     * 4 south
+     * 4 = south
      */
     for (ii = 0; ii < 5; ii++)
       p(ii) = nei(i, nc, ii);
@@ -146,67 +146,83 @@ NumericMatrix tpm_func(double alpha, NumericVector omegas, NumericMatrix resourc
 
 // Wrapped world
 //[[Rcpp::export]]
-List walk_func(NumericMatrix tpm, int n, NumericVector xy0, int nc) {
+List walk(NumericMatrix tpm, int n, NumericVector xy0, int nc, NumericVector dp, int init_dir = -1, int boundary = 1, int max_try = 100) {
+
+  // NumericVector dp = NumericVector::create(0.2, 0.2, 0.2, 0.9, 0.1);
+  NumericVector dp_stay = NumericVector::create(1, 1, 1, 1, 1);
+
+  NumericVector dp_e = NumericVector::create(dp[1], dp[0], dp[2], dp[1], dp[1]);
+  NumericVector dp_w = NumericVector::create(dp[1], dp[2], dp[0], dp[1], dp[2]);
+
+  NumericVector dp_s = NumericVector::create(dp[1], dp[1], dp[1], dp[2], dp[0]);
+  NumericVector dp_n = NumericVector::create(dp[1], dp[1], dp[1], dp[0], dp[2]);
+
 
   IntegerVector c(n), w, ch = Range(0, 4); // choices for the new yx
-  int i, k;
+  int i, k, t;
   c(0) = xy0(0) + xy0(1) * nc;
 
   for (i = 1; i < n; i++) {
     k = c(i-1);
-    w = rsamp2(ch, tpm(k, _)); // weights of the neighbours
-    c(i) = nei(k, nc, w(0));
-  }
-  return List::create(Named("steps") = c,
-                      Named("outcome") = 1);
-}
 
-
-// Wrapped stop if hits boundary
-//[[Rcpp::export]]
-List walk_func_boundary_stop(NumericMatrix tpm, int n, NumericVector xy0, int nc) {
-
-  IntegerVector c(n), w, ch = Range(0, 4); // choices for the new yx
-  int i, k, r, s;
-  c(0) = xy0(0) + xy0(1) * nc;
-
-  for (i = 1; i < n; i++) {
-    k = c(i-1);
-    w = rsamp2(ch, tpm(k, _)); // weights of the neighbours
-    int next = nei2(k, nc, w(0));
-    if (next == -1)// nei2 return -1 if a step is outside the boundary
-      return List::create(Named("steps") = c,
-                          Named("last_step") = i,
-                          Named("outcome") = -1);
-    else c(i) = next;
-  }
-  return List::create(Named("steps") = c,
-                      Named("outcome") = 1);
-}
-
-// reflective boundary
-//[[Rcpp::export]]
-List walk_func_boundary_reflective(NumericMatrix tpm, int n, NumericVector xy0, int nc, int max_try) {
-
-  IntegerVector c(n), w, ch = Range(0, 4); // choices for the new yx
-  int i, k, r, s, next, t = 0;
-  c(0) = xy0(0) + xy0(1) * nc;
-
-  for (i = 1; i < n; i++) {
-    k = c(i-1);
-    w = rsamp2(ch, tpm(k, _)); // weights of the neighbours
-    int next = nei2(k, nc, w(0));
-    while (next == -1 & t < max_try) {// nei2 return -1 if a step is outside the boundary
-      w = rsamp2(ch, tpm(k, _)); // weights of the neighbours
-      next = nei2(k, nc, w(0));
-      t++;
+    // find next cell
+    if (i == 1) {
+      if (init_dir == -1) {
+        w = rsamp2(ch, tpm(k, _)); // weights of the neighbours -> multiply by directional persistence
+      } else {
+        w = NumericVector::create(init_dir);
+      }
     }
-    c(i) = next;
-    t = 0;
+
+    int wlast = w(0);
+    if (wlast == 0) {
+      w = rsamp2(ch, tpm(k, _) * dp_stay); // weights of the neighbours -> multiply by directional persistence
+    } else if (wlast == 1) {
+      w = rsamp2(ch, tpm(k, _) * dp_e); // weights of the neighbours -> multiply by directional persistence
+    } else if (wlast == 2) {
+      w = rsamp2(ch, tpm(k, _) * dp_w); // weights of the neighbours -> multiply by directional persistence
+    } else if (wlast == 3) {
+      w = rsamp2(ch, tpm(k, _) * dp_n); // weights of the neighbours -> multiply by directional persistence
+    } else if (wlast == 4) {
+      w = rsamp2(ch, tpm(k, _) * dp_s); // weights of the neighbours -> multiply by directional persistence
+    }
+    /*
+     * Different boundary conditions:
+     * 1: Wrapped world
+     * 2: Stop if animal steps out of boundary
+     * 3: Reflective boundaries
+     */
+
+    if (boundary == 1) {
+      // Wrapped
+      c(i) = nei(k, nc, w(0));
+    } else if (boundary == 2) {
+      // Stop if animal hits boundary
+
+      int next = nei2(k, nc, w(0));
+      if (next == -1) { // nei2 return -1 if a step is outside the boundary
+        return List::create(Named("steps") = c,
+                            Named("last_step") = i,
+                            Named("outcome") = -1);
+      } else {
+        c(i) = next;
+      }
+    } else if (boundary == 3) {
+      // Reflective boundary
+      int next = nei2(k, nc, w(0));
+      while (next == -1 & t < max_try) {// nei2 return -1 if a step is outside the boundary
+        w = rsamp2(ch, tpm(k, _)); // weights of the neighbours
+        next = nei2(k, nc, w(0));
+        t++;
+      }
+      c(i) = next;
+      t = 0;
+    }
   }
   return List::create(Named("steps") = c,
                       Named("outcome") = 1);
 }
+
 
 //[[Rcpp::export]]
 List ud_func(NumericMatrix tpm, int n, NumericVector xy0, int nc, int burnin) {
@@ -233,3 +249,5 @@ List ud_func(NumericMatrix tpm, int n, NumericVector xy0, int nc, int burnin) {
     Named("ud") = ud,
     Named("lastPos") = k);
 }
+
+
