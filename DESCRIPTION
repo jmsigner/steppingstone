@@ -12,6 +12,7 @@ LazyData: true
 Depends:
     raster
 Imports:
-    Rcpp (>= 0.12.9)
+    Rcpp (>= 0.12.9),
+    circular
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 6.0.1
