@@ -9,7 +9,7 @@ walk <- function(tpm, n, xy0, nc, dp, init_dir = -1L, boundary = 1L, max_try = 1
     .Call('steppingstone_walk', PACKAGE = 'steppingstone', tpm, n, xy0, nc, dp, init_dir, boundary, max_try)
 }
 
-ud_func <- function(tpm, n, xy0, nc, burnin) {
-    .Call('steppingstone_ud_func', PACKAGE = 'steppingstone', tpm, n, xy0, nc, burnin)
+ud_func <- function(tpm, n, xy0, nc, burnin, dp, boundary = 1L, init_dir = -1L, max_try = 100L) {
+    .Call('steppingstone_ud_func', PACKAGE = 'steppingstone', tpm, n, xy0, nc, burnin, dp, boundary, init_dir, max_try)
 }
 

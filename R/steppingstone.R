@@ -7,7 +7,7 @@ steppingstone <- function(alpha = pm2alpha(0.5), omegas, resources, n = 1e5,
                           boundary = "wrap",
                           kappa = 0,
                           with_attr = FALSE, more = NULL, random_error = 0,
-                          init_dir = -1) {
+                          init_dir = -1, ud = FALSE) {
 
   r <- raster::as.array(resources)
   nc <- dim(r)[2]
@@ -36,55 +36,82 @@ steppingstone <- function(alpha = pm2alpha(0.5), omegas, resources, n = 1e5,
 
   dir_wei <- c(fwd, side, back)
 
+  if (ud) {
+    if (boundary == "wrap") {
+      w <- ud_func(tm1, n, xy0, nc, burnin, dp = dir_wei, boundary = 1, init_dir = init_dir)
+    } else if (boundary == "stop") {
+      w <- ud_func(tm1, n, xy0, nc, burnin, dp = dir_wei, boundary = 2, init_dir = init_dir)
+    } else if (boundary == "reflective") {
+      w <- ud_func(tm1, n, xy0, nc, burnin, dp = dir_wei, boundary = 3, init_dir = init_dir)
+    }
 
+    ud <- resources[[1]]
+    ud[] <- w$ud
+    last <- c(x = w$lastPos %% nc + 0.5, y = w$lastPos %/% nc + 0.5)
 
-  # simulate walk
-  if (boundary == "wrap") {
-    w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 1, init_dir = init_dir)$steps
+    xy <- if (with_attr) {
+      list(ud = ud,
+           last_pos = last,
+           alpha = alpha,
+           omegas = omegas,
+           resources = resources,
+           n = n,
+           xy0 = xy0,
+           burnin = burnin,
+           more = more,
+           with_attr = TRUE)
+    } else {
+      list(ud = ud,
+           last_pos = last,
+           with_attr = FALSE)
+    }
+    xy
 
-  } else if (boundary == "stop") {
-    w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 2, init_dir = init_dir)
-    w <- w$steps[1:w$last_step]
-  } else if (boundary == "reflective") {
-    w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 3, init_dir = init_dir)$steps
-  }
-
-
-  # rm burnin
-  if (burnin > 0)
-    w <- w[-(1:burnin)]
-
-  # rarify
-  w <- w[seq(1, length(w), by = rarify_by)]
-
-
-  xy <- cbind(x = w %% nc + 0.5, y = w %/% nc + 0.5)
-
-  if (random_error != 0) {
-    xy[, 1] <- xy[, 1] + runif(nrow(xy), -random_error, random_error)
-    xy[, 2] <- xy[, 2] + runif(nrow(xy), -random_error, random_error)
-
-  }
-
-  xy <- if (with_attr) {
-    list(xy = xy,
-         alpha = alpha,
-         omegas = omegas,
-         n = n,
-         xy0 = xy0,
-         rarify_by = rarify_by,
-         burnin = burnin,
-         more = more,
-         kappa = kappa,
-         boundary = boundary,
-         with_attr = TRUE)
   } else {
-    list(xy = xy,
-         with_attr = FALSE)
-  }
+    # simulate walk
+    if (boundary == "wrap") {
+      w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 1, init_dir = init_dir)$steps
+    } else if (boundary == "stop") {
+      w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 2, init_dir = init_dir)
+      w <- w$steps[1:w$last_step]
+    } else if (boundary == "reflective") {
+      w <- walk(tm1, n, xy0, nc, dp = dir_wei, boundary = 3, init_dir = init_dir)$steps
+    }
 
-  class(xy) <-  c("sstone_walk", "list")
-  xy
+
+    # rm burnin
+    if (burnin > 0)
+      w <- w[-(1:burnin)]
+
+    # rarify
+    w <- w[seq(1, length(w), by = rarify_by)]
+
+    xy <- cbind(x = w %% nc + 0.5, y = w %/% nc + 0.5)
+    if (random_error != 0) {
+      xy[, 1] <- xy[, 1] + runif(nrow(xy), -random_error, random_error)
+      xy[, 2] <- xy[, 2] + runif(nrow(xy), -random_error, random_error)
+    }
+
+    xy <- if (with_attr) {
+      list(xy = xy,
+           alpha = alpha,
+           omegas = omegas,
+           n = n,
+           xy0 = xy0,
+           rarify_by = rarify_by,
+           burnin = burnin,
+           more = more,
+           kappa = kappa,
+           boundary = boundary,
+           with_attr = TRUE)
+    } else {
+      list(xy = xy,
+           with_attr = FALSE)
+    }
+
+    class(xy) <-  c("sstone_walk", "list")
+    xy
+  }
 }
 
 

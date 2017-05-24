@@ -40,8 +40,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // ud_func
-List ud_func(NumericMatrix tpm, int n, NumericVector xy0, int nc, int burnin);
-RcppExport SEXP steppingstone_ud_func(SEXP tpmSEXP, SEXP nSEXP, SEXP xy0SEXP, SEXP ncSEXP, SEXP burninSEXP) {
+List ud_func(NumericMatrix tpm, int n, NumericVector xy0, int nc, int burnin, NumericVector dp, int boundary, int init_dir, int max_try);
+RcppExport SEXP steppingstone_ud_func(SEXP tpmSEXP, SEXP nSEXP, SEXP xy0SEXP, SEXP ncSEXP, SEXP burninSEXP, SEXP dpSEXP, SEXP boundarySEXP, SEXP init_dirSEXP, SEXP max_trySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -50,7 +50,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type xy0(xy0SEXP);
     Rcpp::traits::input_parameter< int >::type nc(ncSEXP);
     Rcpp::traits::input_parameter< int >::type burnin(burninSEXP);
-    rcpp_result_gen = Rcpp::wrap(ud_func(tpm, n, xy0, nc, burnin));
+    Rcpp::traits::input_parameter< NumericVector >::type dp(dpSEXP);
+    Rcpp::traits::input_parameter< int >::type boundary(boundarySEXP);
+    Rcpp::traits::input_parameter< int >::type init_dir(init_dirSEXP);
+    Rcpp::traits::input_parameter< int >::type max_try(max_trySEXP);
+    rcpp_result_gen = Rcpp::wrap(ud_func(tpm, n, xy0, nc, burnin, dp, boundary, init_dir, max_try));
     return rcpp_result_gen;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"steppingstone_tpm_func", (DL_FUNC) &steppingstone_tpm_func, 5},
+    {"steppingstone_walk", (DL_FUNC) &steppingstone_walk, 8},
+    {"steppingstone_ud_func", (DL_FUNC) &steppingstone_ud_func, 9},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_steppingstone(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }

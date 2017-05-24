@@ -148,7 +148,6 @@ NumericMatrix tpm_func(double alpha, NumericVector omegas, NumericMatrix resourc
 //[[Rcpp::export]]
 List walk(NumericMatrix tpm, int n, NumericVector xy0, int nc, NumericVector dp, int init_dir = -1, int boundary = 1, int max_try = 100) {
 
-  // NumericVector dp = NumericVector::create(0.2, 0.2, 0.2, 0.9, 0.1);
   NumericVector dp_stay = NumericVector::create(1, 1, 1, 1, 1);
 
   NumericVector dp_e = NumericVector::create(dp[1], dp[0], dp[2], dp[1], dp[1]);
@@ -225,7 +224,7 @@ List walk(NumericMatrix tpm, int n, NumericVector xy0, int nc, NumericVector dp,
 
 
 //[[Rcpp::export]]
-List ud_func(NumericMatrix tpm, int n, NumericVector xy0, int nc, int burnin) {
+List ud_func(NumericMatrix tpm, int n, NumericVector xy0, int nc, int burnin, NumericVector dp, int boundary = 1, int init_dir = -1,  int max_try = 100) {
 
   IntegerVector w, ch = Range(0, 4); // choices for the new yx
 
@@ -233,16 +232,80 @@ List ud_func(NumericMatrix tpm, int n, NumericVector xy0, int nc, int burnin) {
 
   // first cell
   int k = xy0(0) + (nc - xy0(1)) * nc; // index for neighbouring cell
+  int next, t;
   ud(k)++;
 
+  // directional persistence
+  NumericVector dp_stay = NumericVector::create(1, 1, 1, 1, 1);
+
+  NumericVector dp_e = NumericVector::create(dp[1], dp[0], dp[2], dp[1], dp[1]);
+  NumericVector dp_w = NumericVector::create(dp[1], dp[2], dp[0], dp[1], dp[2]);
+
+  NumericVector dp_s = NumericVector::create(dp[1], dp[1], dp[1], dp[2], dp[0]);
+  NumericVector dp_n = NumericVector::create(dp[1], dp[1], dp[1], dp[0], dp[2]);
+
   for (int i = 1; i < (n + burnin); i++) {
-    w = rsamp2(ch, tpm(k, _)); // weights of the neighbours
+    // w = rsamp2(ch, tpm(k, _)); // weights of the neighbours
     // 2017-04-01: Removed normalization in favor for speed
     // w = RcppArmadillo::sample(ch, 1, true, (NumericVector)(tpm(k, _) / sum(tpm(k, _)))); // weights of the neighbours
-    k = nei(k, nc, w(0));
-    if (i > burnin) {
-      ud(k)++;
+
+
+    // find next cell
+    if (i == 1) {
+      if (init_dir == -1) {
+        w = rsamp2(ch, tpm(k, _)); // weights of the neighbours -> multiply by directional persistence
+      } else {
+        w = NumericVector::create(init_dir);
+      }
     }
+
+    int wlast = w(0);
+    if (wlast == 0) {
+      w = rsamp2(ch, tpm(k, _) * dp_stay); // weights of the neighbours -> multiply by directional persistence
+    } else if (wlast == 1) {
+      w = rsamp2(ch, tpm(k, _) * dp_e); // weights of the neighbours -> multiply by directional persistence
+    } else if (wlast == 2) {
+      w = rsamp2(ch, tpm(k, _) * dp_w); // weights of the neighbours -> multiply by directional persistence
+    } else if (wlast == 3) {
+      w = rsamp2(ch, tpm(k, _) * dp_n); // weights of the neighbours -> multiply by directional persistence
+    } else if (wlast == 4) {
+      w = rsamp2(ch, tpm(k, _) * dp_s); // weights of the neighbours -> multiply by directional persistence
+    }
+    /*
+     * Different boundary conditions:
+     * 1: Wrapped world
+     * 2: Stop if animal steps out of boundary
+     * 3: Reflective boundaries
+     */
+
+    if (boundary == 1) {
+      // Wrapped
+      next = nei(k, nc, w(0));
+    } else if (boundary == 2) {
+      // Stop if animal hits boundary
+
+      next = nei2(k, nc, w(0));
+      if (next == -1) { // nei2 return -1 if a step is outside the boundary
+        return List::create(Named("steps") = ud,
+                            Named("last_step") = i,
+                            Named("outcome") = -1);
+      }
+    } else if (boundary == 3) {
+      // Reflective boundary
+      next = nei2(k, nc, w(0));
+      while (next == -1 & t < max_try) {// nei2 return -1 if a step is outside the boundary
+        w = rsamp2(ch, tpm(k, _)); // weights of the neighbours
+        next = nei2(k, nc, w(0));
+        t++;
+      }
+      t = 0;
+    }
+
+    if (i > burnin) {
+      ud(next)++;
+    }
+
+    k = next;
   }
 
   return List::create(
